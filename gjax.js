@@ -15,11 +15,14 @@
 //  gjax.submit.after : fired after form is gjax-submitted
 //  gjax.navigate.before : fired before gjax makes navigation request
 //  gjax.navigate.after : fired after gjax navigation is complete
+//  gjax.modal.before : fired before gjax makes modal request
+//  gjax.modal.after : fired after gjax modal is open
 
 
 var GJax;
 (function (GJax) {
 
+    var isInitialized = false;
     var settings = {
         globalModalId: "#global-gjax-modal"
     };
@@ -45,6 +48,7 @@ var GJax;
         }
         var submitData = theForm.find(":not([gjax-alt])").serialize();
 
+
         var altdata = "";
         theForm.find("[alt-name]").each(function (n) {
             var altName = $(this).attr("alt-name");
@@ -54,14 +58,12 @@ var GJax;
             altdata += altName + '=' + encodeURIComponent( $(this).val())
         });
 
-
         if (altdata != "") {
             if (submitData != "") {
                 altdata = "&" + altdata;
             }
             submitData += altdata;
         }
-
         $.event.trigger({
             type: "gjax.submit.before",
             submitData: submitData,
@@ -74,7 +76,6 @@ var GJax;
             dataType: "html",
             data: submitData,
             success: function (data) {
-
                 sectionUpdate(data);
 
                 $.event.trigger({
@@ -90,21 +91,29 @@ var GJax;
 
 
     };
+
     var setFormSubmssion = function () {
         $("form[gjax-enable]").each(function (n) {
             var thisForm = $(this);
-            $(document).on('click', "form[gjax-enable] button[name]", function (e) {
-                e.preventDefault();
-                var theButton = this;
-                var v = $(theButton).val();
-                var name = $(theButton).attr("name");
-                if (thisForm.find('#gjax-val-' + name).length == 0) {
-                    thisForm.append("<input type='hidden' id='gjax-val-" + name + "' gjax-alt alt-name='" + name + "' name='gjax-val-" + name + "'>")
-                }
-                thisForm.find('#gjax-val-' + name).val(v);
-                submitTheForm(thisForm, e);
-            });
+            if (thisForm.attr("gjax-init")) {
+                return;
+            }
+            thisForm.attr("gjax-init", true);
         });
+        $(document).on('click', "form[gjax-enable] button[name]", function (e) {
+            e.preventDefault();
+            var theButton = this;
+            var thisForm = $(theButton).closest("form");
+            var v = $(theButton).val();
+            var name = $(theButton).attr("name");
+            if (thisForm.find('#gjax-val-' + name).length == 0) {
+                thisForm.append("<input type='hidden' id='gjax-val-" + name + "' gjax-alt alt-name='" + name + "' name='gjax-val-" + name + "'>")
+            }
+            thisForm.find('#gjax-val-' + name).val(v);
+            submitTheForm(thisForm, e);
+        });
+
+
         $(document).on("submit", "form[gjax-enable]", function (e) {
             e.preventDefault();
             var thisForm = $(this);
@@ -116,7 +125,6 @@ var GJax;
     var setLinkClicky = function () {
 
         $(document).on("click", "a[gjax-enable]", function (e) {
-
             var url = $(this).attr('href');
             if (!url) {
                 return false;
@@ -226,6 +234,10 @@ var GJax;
         var enableLinks = true;
         var enableForms = true;
         var enableModals = true;
+        if (isInitialized) {
+            return;
+        }
+        isInitialized = true;
         if (p) {
             if (p.globalModalId) {
                 settings.globalModalId = p.globalModalId;
@@ -240,6 +252,7 @@ var GJax;
                 enableLinks = p.enableLinks;
             }
         }
+
         if (enableForms) {
             setFormSubmssion();
         }
